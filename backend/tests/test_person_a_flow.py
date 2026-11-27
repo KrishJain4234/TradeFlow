@@ -11,7 +11,7 @@ if TEST_DB_PATH.exists():
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 os.environ["ENABLE_YFINANCE"] = "false"
-os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["POLLINATIONS_API_KEY"] = ""
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:

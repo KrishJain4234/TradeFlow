@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     ENABLE_YFINANCE: bool = False
 
-    ANTHROPIC_API_KEY: str = ""
+    POLLINATIONS_API_KEY: str = ""
+    POLLINATIONS_BASE_URL: str = "https://text.pollinations.ai/openai"
     SARVAM_API_KEY: str = ""
     WISPR_API_KEY: str = ""
 

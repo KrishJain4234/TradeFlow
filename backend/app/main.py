@@ -90,7 +90,8 @@ def health():
     return {
         "status": "ok",
         "yfinance_enabled": settings.ENABLE_YFINANCE,
-        "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
+        "pollinations_configured": bool(settings.POLLINATIONS_API_KEY),
+        "pollinations_base_url": settings.POLLINATIONS_BASE_URL,
         "sarvam_configured": bool(settings.SARVAM_API_KEY),
         "wispr_configured": bool(settings.WISPR_API_KEY),
     }
