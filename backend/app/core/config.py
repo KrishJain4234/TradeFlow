@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     ENABLE_YFINANCE: bool = False
 
     ANTHROPIC_API_KEY: str = ""
+    POLLINATIONS_API_KEY: str = ""
+    POLLINATIONS_MODEL: str = "openai/gpt-5.4-nano"
+    POLLINATIONS_BASE_URL: str = "https://gen.pollinations.ai/v1"
     SARVAM_API_KEY: str = ""
     WISPR_API_KEY: str = ""
 

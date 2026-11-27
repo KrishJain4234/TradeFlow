@@ -13,7 +13,27 @@ from .limits import enforce_rate_limit
 
 router = APIRouter()
 
-LANGUAGES = {"en": "English", "hi": "Hindi", "kn": "Kannada", "mr": "Marathi", "gu": "Gujarati", "ta": "Tamil"}
+LANGUAGES = {
+    "en": "English", "hi": "Hindi", "kn": "Kannada", "mr": "Marathi", "gu": "Gujarati", "ta": "Tamil",
+    "bn": "Bengali", "te": "Telugu", "ml": "Malayalam", "pa": "Punjabi", "ur": "Urdu", "or": "Odia",
+    "as": "Assamese", "ne": "Nepali", "sa": "Sanskrit", "sd": "Sindhi", "si": "Sinhala",
+    "es": "Spanish", "fr": "French", "de": "German", "pt": "Portuguese", "it": "Italian", "nl": "Dutch",
+    "ru": "Russian", "zh": "Chinese", "ja": "Japanese", "ko": "Korean", "ar": "Arabic", "tr": "Turkish",
+    "vi": "Vietnamese", "th": "Thai", "id": "Indonesian", "ms": "Malay", "tl": "Tagalog", "pl": "Polish",
+    "uk": "Ukrainian", "cs": "Czech", "sk": "Slovak", "ro": "Romanian", "hu": "Hungarian", "el": "Greek",
+    "sv": "Swedish", "da": "Danish", "no": "Norwegian", "nn": "Norwegian Nynorsk", "fi": "Finnish",
+    "is": "Icelandic", "he": "Hebrew", "fa": "Persian", "ps": "Pashto", "sw": "Swahili", "am": "Amharic",
+    "af": "Afrikaans", "sq": "Albanian", "hy": "Armenian", "az": "Azerbaijani", "eu": "Basque",
+    "be": "Belarusian", "bs": "Bosnian", "bg": "Bulgarian", "ca": "Catalan", "hr": "Croatian",
+    "et": "Estonian", "gl": "Galician", "ka": "Georgian", "ht": "Haitian Creole", "ha": "Hausa",
+    "haw": "Hawaiian", "ig": "Igbo", "ga": "Irish", "jv": "Javanese", "kk": "Kazakh", "km": "Khmer",
+    "ky": "Kyrgyz", "lo": "Lao", "la": "Latin", "lv": "Latvian", "lt": "Lithuanian",
+    "lb": "Luxembourgish", "mk": "Macedonian", "mg": "Malagasy", "mt": "Maltese", "mi": "Maori",
+    "mn": "Mongolian", "my": "Myanmar (Burmese)", "oc": "Occitan", "sr": "Serbian", "sn": "Shona",
+    "sl": "Slovenian", "so": "Somali", "su": "Sundanese", "tg": "Tajik", "tt": "Tatar", "bo": "Tibetan",
+    "tk": "Turkmen", "uz": "Uzbek", "cy": "Welsh", "xh": "Xhosa", "yi": "Yiddish", "yo": "Yoruba",
+    "zu": "Zulu", "ba": "Bashkir", "br": "Breton", "fo": "Faroese", "ln": "Lingala",
+}
 ALIASES = {
     "reliance": "RELIANCE", "ril": "RELIANCE", "रिलायंस": "RELIANCE",
     "infosys": "INFY", "infy": "INFY", "इन्फोसिस": "INFY",
@@ -193,34 +213,25 @@ def explain(request: ExplainRequest):
             return result
     return {"term": request.term, "definition": "This term is not in the local demo glossary yet. Connect the explanation service to request a generated explanation.", "example": "No example is available in demo mode.", "language": request.language if request.language in LANGUAGES else "en", "response_language": "en", "language_fallback": request.language != "en", "source": "fallback", "mode": "demo"}
 
-@router.post("/api/assistant")
-def assistant(request: AssistantRequest, http_request: Request):
-    enforce_rate_limit(http_request, "assistant", 30)
-    original = request.text.strip()
-    language = request.language if request.language in LANGUAGES else "en"
-    normalized = normalize_numbers(original)
-    translation_path = "none"
-    if language != "en":
-        try:
-            translated = providers.translate_text(original, target="en", source="auto")
-        except Exception:
-            translated = None
-        if translated:
-            candidate = normalize_numbers(translated["text"])
-            numeric_pattern=r"\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?"
-            original_numbers = [value.replace(",","") for value in re.findall(numeric_pattern, normalized)]
-            translated_numbers = [value.replace(",","") for value in re.findall(numeric_pattern, candidate)]
-            if original_numbers != translated_numbers:
-                return response("GENERAL_QUERY", "The translation changed a number. Please restate the stock quantity or price in digits; no financial action was prepared.", language, original_text=original, normalized_text=candidate, input_method=request.input_method, requires_clarification=True, clarification_question="Please confirm the numbers exactly as digits.", translation_path="sarvam", translation_conflict=True)
-            normalized = candidate
-            translation_path = "sarvam"
-        else:
-            translation_path = "local-keyword-fallback"
+def _extract_local_intent(
+    normalized: str,
+    original: str,
+    language: str,
+    input_method: str,
+    dictionary: dict[str, str],
+    translation_path: str,
+    allow_incomplete_trade: bool,
+) -> dict | None:
     folded = normalized.casefold()
     currencies = re.findall(r"(?:₹|rs\.?\s*)(\d[\d,]*(?:\.\d+)?)|\b(\d[\d,]*(?:\.\d+)?)\s*(?:rupees?|inr|रुपये|रुपया)\b", normalized, flags=re.IGNORECASE)
-    base = {"original_text": original, "normalized_text": normalized, "input_method": request.input_method,
-            "original_language": language, "translation_path": translation_path,
-            "currency_values_inr": [float((a or b).replace(",", "")) for a, b in currencies]}
+    base = {
+        "original_text": original,
+        "normalized_text": normalized,
+        "input_method": input_method,
+        "original_language": language,
+        "translation_path": translation_path,
+        "currency_values_inr": [float((a or b).replace(",", "")) for a, b in currencies],
+    }
 
     # Explain terms before broad research classification.
     searchable_text = re.sub(r"[^a-z0-9]", "", folded)
@@ -246,12 +257,13 @@ def assistant(request: AssistantRequest, http_request: Request):
         return response("TRADE_ORDER", "I heard conflicting trade instructions. Please state one clear side and quantity. No order was placed.", language, **base, requires_clarification=True, clarification_question="Should I prepare a buy or sell request, and for how many shares?", action_type="PREPARE_ORDER")
 
     if side and not negated_trade:
-        symbol = resolve_symbol(folded, request.dictionary)
+        symbol = resolve_symbol(folded, dictionary)
         qtys = list(re.finditer(r"(?<!\w)(\d+(?:\.\d+)?)\s*(?:shares?|शेयर(?:ों)?|षेअर्स?|शेअर्स?|ಷೇರು(?:ಗಳನ್ನು|ಗಳು|ಗಳ)?|શેર(?:ને|ો)?|பங்குகள(?:ை)?|பங்குகள்)(?=$|\s|[,.;!?])", normalized, re.IGNORECASE))
         qty = qtys[0] if len(qtys) == 1 else None
-        if not symbol or not qty or float(qty.group(1)) <= 0 or not float(qty.group(1)).is_integer():
+        if symbol and qty and float(qty.group(1)) > 0 and float(qty.group(1)).is_integer():
+            return response("TRADE_ORDER", f"I understood {side.lower()} {int(float(qty.group(1)))} shares of {symbol}. Review this request in the order preview; the assistant does not place orders.", language, **base, action_type="PREPARE_ORDER", action_payload={"symbol": symbol, "side": side, "quantity": int(float(qty.group(1)))}, requires_approval=True, extracted_entities={"symbol": symbol, "side": side, "quantity": int(float(qty.group(1)))}, suggested_actions=[{"id": "REVIEW_ORDER", "label": "Review order"}])
+        if allow_incomplete_trade:
             return response("TRADE_ORDER", "I need an unambiguous stock and whole-share quantity before preparing an order. No order was placed.", language, **base, requires_clarification=True, clarification_question="Which stock and how many whole shares?", action_type="PREPARE_ORDER", extracted_entities={"symbol": symbol, "quantity": int(float(qty.group(1))) if qty else None, "side": side})
-        return response("TRADE_ORDER", f"I understood {side.lower()} {int(float(qty.group(1)))} shares of {symbol}. Review this request in the order preview; the assistant does not place orders.", language, **base, action_type="PREPARE_ORDER", action_payload={"symbol": symbol, "side": side, "quantity": int(float(qty.group(1)))}, requires_approval=True, extracted_entities={"symbol": symbol, "side": side, "quantity": int(float(qty.group(1)))}, suggested_actions=[{"id": "REVIEW_ORDER", "label": "Review order"}])
 
     if any(word in folded for word in ("portfolio", "watchlist", "holdings")):
         return response("PORTFOLIO_QUERY", "Portfolio data is not connected in this AI demo. No holdings or values are being invented.", language, **base, suggested_actions=[{"id": "OPEN_PORTFOLIO", "label": "Open portfolio"}])
@@ -259,10 +271,70 @@ def assistant(request: AssistantRequest, http_request: Request):
     if any(word in folded for word in ("alert", "notify", "notification")):
         return response("PRICE_ALERT", "I can recognize an alert request, but alert creation is not connected in this AI slice. No alert was created.", language, **base, action_type="PREPARE_ALERT", requires_clarification=True, clarification_question="Which stock, price level and direction should the alert use?")
 
-    if "overview" in folded and resolve_symbol(folded,request.dictionary):
-        symbol=resolve_symbol(folded,request.dictionary)
-        info={"INFY":"Infosys Limited is an Indian IT services and consulting company.","TCS":"Tata Consultancy Services is an Indian IT services and consulting company.","RELIANCE":"Reliance Industries is an Indian conglomerate with energy, retail, telecom and other businesses.","HDFCBANK":"HDFC Bank is an Indian banking and financial-services company."}
-        return response("STOCK_RESEARCH_PREDEFINED",f"Demo company overview for {symbol}: {info.get(symbol,'Company profile data is unavailable in this local overview.')}",language,**base,sources=[{"label":"Local demo knowledge","url":None,"timestamp":None}],extracted_entities={"symbol":symbol})
+    if "overview" in folded and resolve_symbol(folded, dictionary):
+        symbol = resolve_symbol(folded, dictionary)
+        info = {"INFY": "Infosys Limited is an Indian IT services and consulting company.", "TCS": "Tata Consultancy Services is an Indian IT services and consulting company.", "RELIANCE": "Reliance Industries is an Indian conglomerate with energy, retail, telecom and other businesses.", "HDFCBANK": "HDFC Bank is an Indian banking and financial-services company."}
+        return response("STOCK_RESEARCH_PREDEFINED", f"Demo company overview for {symbol}: {info.get(symbol, 'Company profile data is unavailable in this local overview.')}", language, **base, sources=[{"label": "Local demo knowledge", "url": None, "timestamp": None}], extracted_entities={"symbol": symbol})
+
+    return None
+
+
+@router.post("/api/assistant")
+def assistant(request: AssistantRequest, http_request: Request):
+    enforce_rate_limit(http_request, "assistant", 30)
+    original = request.text.strip()
+    language = request.language if request.language in LANGUAGES else "en"
+    normalized = normalize_numbers(original)
+
+    # Run voice-profile dictionary + multilingual keyword extraction before calling any translation API.
+    local_path = "local-keyword-mapping" if language != "en" else "none"
+    local_match = _extract_local_intent(
+        normalized,
+        original,
+        language,
+        request.input_method,
+        request.dictionary,
+        translation_path=local_path,
+        allow_incomplete_trade=(language == "en"),
+    )
+    if local_match is not None:
+        return local_match
+
+    translation_path = "none"
+    if language != "en":
+        try:
+            translated = providers.translate_text(original, target="en", source="auto")
+        except Exception:
+            translated = None
+        if translated:
+            candidate = normalize_numbers(translated["text"])
+            numeric_pattern = r"\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?"
+            original_numbers = [value.replace(",", "") for value in re.findall(numeric_pattern, normalized)]
+            translated_numbers = [value.replace(",", "") for value in re.findall(numeric_pattern, candidate)]
+            if original_numbers != translated_numbers:
+                return response("GENERAL_QUERY", "The translation changed a number. Please restate the stock quantity or price in digits; no financial action was prepared.", language, original_text=original, normalized_text=candidate, input_method=request.input_method, requires_clarification=True, clarification_question="Please confirm the numbers exactly as digits.", translation_path="pollinations", translation_conflict=True)
+            normalized = candidate
+            translation_path = "pollinations"
+        else:
+            translation_path = "local-keyword-fallback"
+
+        translated_match = _extract_local_intent(
+            normalized,
+            original,
+            language,
+            request.input_method,
+            request.dictionary,
+            translation_path=translation_path,
+            allow_incomplete_trade=True,
+        )
+        if translated_match is not None:
+            return translated_match
+
+    folded = normalized.casefold()
+    currencies = re.findall(r"(?:₹|rs\.?\s*)(\d[\d,]*(?:\.\d+)?)|\b(\d[\d,]*(?:\.\d+)?)\s*(?:rupees?|inr|रुपये|रुपया)\b", normalized, flags=re.IGNORECASE)
+    base = {"original_text": original, "normalized_text": normalized, "input_method": request.input_method,
+            "original_language": language, "translation_path": translation_path,
+            "currency_values_inr": [float((a or b).replace(",", "")) for a, b in currencies]}
 
     if any(word in folded for word in ("why", "today", "falling", "down", "movement", "announcement", "latest", "news", "week", "kyun", "क्यों", "गिर", "समाचार", "आज", "ಕಡಿಮ", "ಇಳಿಯ", "ಏಕೆ", "घट", "घसर", "குறை", "வீழ", "செய்தி", "пડ", "આજે", "કેમ", "समाचार")):
         agent_answer = run_agent(normalized, language, request.dictionary)

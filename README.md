@@ -109,7 +109,7 @@ Supported language codes are `en`, `hi`, `kn`, `mr`, `gu`, and `ta`. The browser
 | AI | Anthropic Messages API tool use (optional) and deterministic Demo Mode |
 | Speech/translation | Wispr Flow REST, Sarvam REST, Windows SAPI, browser Web Speech APIs |
 | Market data | Seeded demo database; optional yfinance prototype lookup and Yahoo Finance research adapters |
-| Runtime | Docker Compose for PostgreSQL, API, and the platform console |
+| Runtime | Docker Compose for PostgreSQL, API, and the root dashboard |
 
 RabbitMQ/Celery and Kafka are described in the PRD as later options; they are not configured in this repository. An outbox model exists, but a durable event publisher/consumer pipeline is not implemented. PostgreSQL is the source of truth for the platform's financial state.
 
@@ -136,13 +136,13 @@ backend/
   tests/            assistant, provider, transcript-matrix and platform checks
   alembic/          migration environment/scaffold
 frontend/           platform console (approvals, rules, broker console)
-src/                separate root dashboard and voice-panel prototype
+src/                root dashboard and voice assistant
 docs/
   SECURITY.md       implemented security architecture and production gaps
   UI_SPEC.md        visual reference notes and responsive design direction
   voice-testing.md  60-case voice acceptance matrix and run notes
 TradeFlow_PRD...md  product, functional, technical and security requirements
-docker-compose.yml  PostgreSQL, API and platform-console services
+docker-compose.yml  PostgreSQL, API, and root-dashboard services
 ```
 
 ## API reference
@@ -240,16 +240,16 @@ Copy-Item .env.example .env
 docker compose up --build
 ```
 
-Compose starts PostgreSQL, the FastAPI backend, and the **platform console**. The API is at `http://localhost:8000`, API docs at `http://localhost:8000/docs`, and platform console at `http://localhost:5173`.
+Compose starts PostgreSQL, the FastAPI backend, and the **root dashboard** from `src/`. The dashboard is at `http://localhost:5173`; the API is at `http://localhost:8000` and its docs are at `http://localhost:8000/docs`.
 
-The separate **voice dashboard prototype** can be served from a second terminal on another port while the API is running:
+The separate **platform console** can be served from a second terminal on another port while the API is running:
 
 ```powershell
 npm ci
 npm run dev -- --port 5174
 ```
 
-Open `http://localhost:5174` and use the “Ask TradeFlow” voice button. Browser mic permission and speech-recognition support vary by browser. The root app uses `VITE_API_URL` or defaults to `http://localhost:8000`.
+Open `http://localhost:5174` for the platform console. The root dashboard uses `VITE_API_URL` or defaults to `http://localhost:8000`.
 
 ### Run without Docker
 
@@ -306,7 +306,7 @@ The documented manual matrix is [`docs/voice-testing.md`](docs/voice-testing.md)
 
 The project is an MVP prototype, not the full PRD completion. In particular:
 
-- The Compose-served console and root voice dashboard are separate applications; merge work has unified their API but not their full UI navigation.
+- The platform console in `frontend/` and the root dashboard are separate applications; their API is unified, but their UI navigation is not.
 - The stock-detail page, connected full dashboard/portfolio views, settings/preferences page, and complete route-aware conversation restoration are still missing.
 - Wispr integration is REST-based; the PRD's short-lived token and streaming WebSocket flow is not implemented.
 - Personal dictionaries and selected language live in browser local storage, not the authenticated database voice-profile APIs.

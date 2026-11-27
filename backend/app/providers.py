@@ -18,6 +18,9 @@ load_dotenv(ROOT / ".env")
 LANGUAGE_CODES = {
     "en": "en-IN", "hi": "hi-IN", "kn": "kn-IN", "mr": "mr-IN", "gu": "gu-IN", "ta": "ta-IN"
 }
+LANGUAGE_NAMES = {
+    "en": "English", "hi": "Hindi", "kn": "Kannada", "mr": "Marathi", "gu": "Gujarati", "ta": "Tamil"
+}
 SYMBOLS = {
     "RELIANCE": "RELIANCE.NS", "INFY": "INFY.NS", "TCS": "TCS.NS", "HDFCBANK": "HDFCBANK.NS",
 }
@@ -27,6 +30,7 @@ def provider_status() -> dict[str, Any]:
     return {
         "wispr": bool(os.getenv("WISPR_API_KEY")),
         "sarvam": bool(os.getenv("SARVAM_API_KEY")),
+        "pollinations": bool(os.getenv("POLLINATIONS_API_KEY")),
         "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
         "market_data": importlib.util.find_spec("yfinance") is not None,
         "news": importlib.util.find_spec("yfinance") is not None,
@@ -47,7 +51,7 @@ def wispr_transcribe(audio: str, language: str, dictionary: dict[str, str]) -> d
     terms = list(dict.fromkeys([*dictionary.keys(), *dictionary.values(), "NIFTY", "SENSEX", *SYMBOLS.keys()]))[:100]
     payload = {
         "audio": audio,
-        "language": [language_hint] if language_hint in {"en", "hi", "kn", "mr", "gu", "ta"} else ["en", "hi", "kn", "mr", "gu", "ta"],
+        "language": [language_hint] if len(language_hint) in {2, 3} and language_hint.isalpha() else ["en", "hi", "kn", "mr", "gu", "ta"],
         "context": {"app": {"name": "TradeFlow", "type": "ai"}, "dictionary_context": terms},
     }
     response = httpx.post("https://api.wisprflow.ai/api", headers={"Authorization": f"Bearer {key}"}, json=payload, timeout=60)
@@ -57,25 +61,40 @@ def wispr_transcribe(audio: str, language: str, dictionary: dict[str, str]) -> d
 
 
 def translate_text(text: str, target: str, source: str = "auto") -> dict[str, str] | None:
-    key = os.getenv("SARVAM_API_KEY")
-    target_code = LANGUAGE_CODES.get(target)
-    if not key or not target_code or len(text) > 1800:
+    key = os.getenv("POLLINATIONS_API_KEY")
+    target_name = LANGUAGE_NAMES.get(target)
+    if not key or not target_name or len(text) > 1800:
         return None
-    payload: dict[str, Any] = {
-        "input": text,
-        "source_language_code": source if source == "auto" else LANGUAGE_CODES.get(source, source),
-        "target_language_code": target_code,
-        "model": "mayura:v1",
-        "mode": "modern-colloquial",
-        "numerals_format": "international",
+    base_url = os.getenv("POLLINATIONS_BASE_URL", "https://gen.pollinations.ai/v1").rstrip("/")
+    model = os.getenv("POLLINATIONS_MODEL", "openai/gpt-5.4-nano")
+    source_hint = LANGUAGE_NAMES.get(source, source)
+    payload = {
+        "model": model,
+        "temperature": 0,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    f"You are a precise translator. Translate the user text from {source_hint} to {target_name}. "
+                    "Preserve all numbers, ticker symbols, currency symbols, and formatting exactly. "
+                    "Return only the translated text with no extra commentary."
+                ),
+            },
+            {"role": "user", "content": text},
+        ],
     }
     response = httpx.post(
-        "https://api.sarvam.ai/translate",
-        headers={"api-subscription-key": key}, json=payload, timeout=20,
+        f"{base_url}/chat/completions",
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=20,
     )
     response.raise_for_status()
     data = response.json()
-    return {"text": data["translated_text"], "source_language": data.get("source_language_code", source)}
+    translated = (data["choices"][0]["message"]["content"] or "").strip()
+    if not translated:
+        return None
+    return {"text": translated, "source_language": source}
 
 
 def sarvam_speech(text: str, language: str) -> tuple[bytes, str] | None:

@@ -103,10 +103,11 @@ def health():
     return {
         "status": "ok",
         "yfinance_enabled": settings.ENABLE_YFINANCE,
+        "pollinations_configured": bool(settings.POLLINATIONS_API_KEY),
         "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
         "sarvam_configured": bool(settings.SARVAM_API_KEY),
         "wispr_configured": bool(settings.WISPR_API_KEY),
-        "mode": "integrated" if voice_status["anthropic"] else "demo",
+        "mode": "integrated" if voice_status["pollinations"] else "demo",
         "languages": {"en": "English", "hi": "Hindi", "kn": "Kannada", "mr": "Marathi", "gu": "Gujarati", "ta": "Tamil"},
         "voice": voice_status,
     }

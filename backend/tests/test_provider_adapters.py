@@ -31,14 +31,44 @@ class ProviderAdapterTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 providers.wispr_transcribe("d2VibQ==","en",{})
 
-    def test_sarvam_translation_uses_private_key_and_selected_target(self):
+    def test_pollinations_translation_uses_private_key_and_selected_target(self):
         response = MagicMock()
-        response.json.return_value = {"translated_text":"Why is Reliance falling today?","source_language_code":"hi-IN"}
-        with patch.dict(os.environ,{"SARVAM_API_KEY":"server-only"}), patch("app.providers.httpx.post",return_value=response) as post:
-            translated=providers.translate_text("Reliance kyun gir raha hai?",target="en",source="auto")
-        self.assertIn("Why is Reliance",translated["text"])
-        self.assertEqual(post.call_args.kwargs["headers"]["api-subscription-key"],"server-only")
-        self.assertEqual(post.call_args.kwargs["json"]["target_language_code"],"en-IN")
+        response.json.return_value = {"choices": [{"message": {"content": "Why is Reliance falling today?"}}]}
+        with patch.dict(os.environ, {"POLLINATIONS_API_KEY": "server-only"}), patch("app.providers.httpx.post", return_value=response) as post:
+            translated = providers.translate_text("Reliance kyun gir raha hai?", target="en", source="auto")
+        self.assertEqual(translated["text"], "Why is Reliance falling today?")
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer server-only")
+        self.assertTrue(post.call_args.args[0].endswith("/chat/completions"))
+
+    def test_pollinations_agent_runs_with_key_and_tools(self):
+        response = MagicMock()
+        response.json.return_value = {"choices": [{"message": {"content": "Reliance is trading near ₹2,500."}}]}
+        with patch.dict(os.environ, {"POLLINATIONS_API_KEY": "server-only"}), patch("app.agent.httpx.post", return_value=response) as post:
+            result = agent.run_agent("Why is Reliance falling today?", "en", {})
+        self.assertEqual(result["message"], "Reliance is trading near ₹2,500.")
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer server-only")
+
+    def test_local_dictionary_and_keywords_skip_inbound_translation(self):
+        from types import SimpleNamespace
+        from app.ai_voice import AssistantRequest, assistant
+
+        req = SimpleNamespace(client=SimpleNamespace(host="test-local-first"))
+        with patch("app.ai_voice.enforce_rate_limit"), patch("app.ai_voice.providers.translate_text", return_value=None) as translate_mock:
+            result = assistant(
+                AssistantRequest(
+                    text="दस शेयर मेरी कंपनी खरीदो",
+                    language="hi",
+                    dictionary={"मेरी कंपनी": "INFY"},
+                    input_method="speech",
+                ),
+                req,
+            )
+        self.assertEqual(result["intent"], "TRADE_ORDER")
+        self.assertEqual(result["action_payload"], {"symbol": "INFY", "side": "BUY", "quantity": 10})
+        self.assertEqual(result["translation_path"], "local-keyword-mapping")
+        # Inbound translation was skipped; only outbound translation of the English reply was attempted.
+        self.assertEqual(translate_mock.call_count, 1)
+        self.assertEqual(translate_mock.call_args.kwargs["target"], "hi")
 
     def test_sarvam_speech_decodes_provider_audio(self):
         encoded=base64.b64encode(b"mock-mp3").decode()

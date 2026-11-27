@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { BookOpen, Headphones, Mic, Pause, Play, RotateCcw, Send, ShieldCheck, Square, X } from 'lucide-react'
+import LanguageSelector from './LanguageSelector'
+import {
+  getDefaultLanguageFromVoiceProfile,
+  getMostFrequentLanguage,
+  getSpeechLocale,
+  loadVoiceProfile,
+  recordSpokenLanguage,
+} from './languages'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-const LANGUAGES = [['en','English'],['hi','हिन्दी'],['kn','ಕನ್ನಡ'],['mr','मराठी'],['gu','ગુજરાતી'],['ta','தமிழ்']]
 type Action = { id: string; label: string }
 type Reply = { intent: string; message: string; response_language?: string; sources?: { label: string; url?: string | null; timestamp?: string | null }[]; suggested_actions?: Action[]; action_payload?: Record<string, unknown> | null; requires_approval?: boolean }
 type Message = { role: 'assistant' | 'user'; text: string; reply?: Reply }
@@ -16,11 +23,12 @@ declare global { interface Window { SpeechRecognition?: RecognitionConstructor; 
 
 const PRESETS = ['Company overview of Infosys', 'Explain key financial ratios', 'Recent announcements for TCS', 'IT sector summary', 'Weekly price movement for Reliance']
 
-export default function VoiceAssistant({ onClose }: { onClose: () => void }) {
-  const [language, setLanguage] = useState(localStorage.getItem('tradeflow-language') || 'en')
+export default function VoiceAssistant({ onClose, initialPrompt = '' }: { onClose: () => void; initialPrompt?: string }) {
+  const [voiceProfile, setVoiceProfile] = useState(() => loadVoiceProfile())
+  const [language, setLanguage] = useState(() => getDefaultLanguageFromVoiceProfile())
   const [dictionary, setDictionary] = useState<Record<string,string>>(() => { try { return JSON.parse(localStorage.getItem('tradeflow-dictionary') || '{}') } catch { return {} } })
   const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', text: 'Ask a market question, explore a research shortcut, or ask me to explain a financial term. Demo answers are labeled and are not live market data.' }])
-  const [value, setValue] = useState('')
+  const [value, setValue] = useState(initialPrompt)
   const [transcript, setTranscript] = useState('')
   const [notice, setNotice] = useState('')
   const [listening, setListening] = useState(false)
@@ -35,7 +43,9 @@ export default function VoiceAssistant({ onClose }: { onClose: () => void }) {
   const silence = useRef<number | undefined>(undefined)
   const handsFreeRef = useRef(false)
   const fromVoice = useRef(false)
+  const wisprRecorded = useRef(false)
   const forceBrowserVoice = useRef(false)
+  const mostSpokenLanguage = getMostFrequentLanguage(voiceProfile)
 
   useEffect(() => { localStorage.setItem('tradeflow-language', language) }, [language])
   useEffect(() => { localStorage.setItem('tradeflow-dictionary', JSON.stringify(dictionary)) }, [dictionary])
@@ -56,7 +66,7 @@ export default function VoiceAssistant({ onClose }: { onClose: () => void }) {
     if (!window.speechSynthesis) { setNotice('Speech playback is unavailable; the answer is shown as text.'); return }
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = ({en:'en-IN',hi:'hi-IN',kn:'kn-IN',mr:'mr-IN',gu:'gu-IN',ta:'ta-IN'} as Record<string,string>)[outputLanguage] || 'en-IN'
+    utterance.lang = getSpeechLocale(outputLanguage)
     utterance.onerror = () => setNotice('Speech playback failed; the answer is shown as text.')
     window.speechSynthesis.speak(utterance)
   }
@@ -66,6 +76,10 @@ export default function VoiceAssistant({ onClose }: { onClose: () => void }) {
     if (!prompt || busy) return
     setValue(''); setBusy(true); setNotice(''); setMessages(current => [...current, {role:'user', text:prompt}])
     const inputMethod = fromVoice.current ? 'speech' : 'typed'; fromVoice.current = false
+    if (inputMethod === 'speech') {
+      if (!wisprRecorded.current) setVoiceProfile(recordSpokenLanguage(language))
+      wisprRecorded.current = false
+    }
     try {
       const result = await fetch(`${API}/api/assistant`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:prompt, language, dictionary, input_method:inputMethod}) })
       if (!result.ok) throw new Error('Assistant API error')
@@ -134,6 +148,10 @@ export default function VoiceAssistant({ onClose }: { onClose: () => void }) {
       if(!result.ok) throw new Error('Wispr transcription is unavailable')
       const data=await result.json() as {text:string;language?:string}
       setTranscript(data.text);setValue(data.text);fromVoice.current=true;setNotice(data.text?'Wispr transcript ready. Review or edit before sending.':'No speech was recognized; please try again.')
+      if (data.text) {
+        setVoiceProfile(recordSpokenLanguage(data.language || language))
+        wisprRecorded.current = true
+      }
       if(data.text&&handsFreeRef.current) await send(data.text)
     } catch {
       setNotice('Wispr Flow could not transcribe this recording. Trying browser speech recognition is available from the microphone button.')
@@ -148,7 +166,7 @@ export default function VoiceAssistant({ onClose }: { onClose: () => void }) {
     if (!Constructor) { setHandsFree(false); handsFreeRef.current = false; setNotice('This browser does not support speech recognition. Type your question instead.'); return }
     try {
       const instance = new Constructor()
-      instance.lang = ({en:'en-IN',hi:'hi-IN',kn:'kn-IN',mr:'mr-IN',gu:'gu-IN',ta:'ta-IN'} as Record<string,string>)[language] || 'en-IN'
+      instance.lang = getSpeechLocale(language)
       instance.continuous = true; instance.interimResults = true
       instance.onresult = event => {
         const words = Array.from({length:event.results.length}, (_,i) => event.results[i][0].transcript).join(' ').trim()
@@ -180,7 +198,7 @@ export default function VoiceAssistant({ onClose }: { onClose: () => void }) {
 
   return <div className="voice-overlay" onClick={onClose}><section className="voice-panel tfai-panel" onClick={event => event.stopPropagation()} aria-label="TradeFlow AI and voice assistant">
     <div className="voice-panel-top"><div><span className="section-kicker">TRADEFLOW AI · DEMO MODE</span><h3>What would you like to know?</h3></div><button className="icon-button" onClick={onClose} aria-label="Close assistant"><X size={18}/></button></div>
-    <div className="tfai-controls"><label>Reply language <select value={language} onChange={event => setLanguage(event.target.value)}>{LANGUAGES.map(([code,label])=><option key={code} value={code}>{label}</option>)}</select></label><button className={handsFree?'tfai-on':''} onClick={() => {const next=!handsFree;setHandsFree(next);if(next)startVoice();else{handsFreeRef.current=false;stopVoice();window.speechSynthesis?.cancel()}}}><Headphones size={15}/> Hands-free {handsFree?'on':'off'}</button></div>
+    <div className="tfai-controls"><div className="tfai-lang-field"><span>Reply language</span><LanguageSelector value={language} mostSpokenLanguage={mostSpokenLanguage} onChange={setLanguage} /></div><button className={handsFree?'tfai-on':''} onClick={() => {const next=!handsFree;setHandsFree(next);if(next)startVoice();else{handsFreeRef.current=false;stopVoice();window.speechSynthesis?.cancel()}}}><Headphones size={15}/> Hands-free {handsFree?'on':'off'}</button></div>
     <div className="tfai-messages" aria-live="polite">
       {messages.map((message,index) => (
         <article className={`tfai-message ${message.role}`} key={`${index}-${message.text.slice(0,12)}`}>
