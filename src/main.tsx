@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import VoiceAssistant from './voice/VoiceAssistant'
 import {
   ArrowUpRight, Bell, ChevronDown, CircleDollarSign, Command,
   Gem, LayoutGrid, LineChart, Mic, MoreHorizontal, Search, ShieldCheck,
@@ -96,7 +97,7 @@ function PortfolioCard() {
 }
 
 function VoicePanel({ onClose }: { onClose: () => void }) {
-  return <div className="voice-overlay" onClick={onClose}><div className="voice-panel" onClick={e => e.stopPropagation()}><div className="voice-panel-top"><div><span className="section-kicker">VOICE COMMAND</span><h3>What do you want to know?</h3></div><button className="icon-button" onClick={onClose}><X size={18} /></button></div><div className="voice-wave"><span /><span /><span /><span /><span /><span /><span /><span /><span /></div><button className="listen-button"><Mic size={21} />Tap to speak</button><div className="voice-suggestions"><button>“How is my portfolio doing?”</button><button>“Find me a safe dividend stock”</button><button>“Buy ₹2,000 of gold”</button></div></div></div>
+  return <VoiceAssistant onClose={onClose} />
 }
 
 function App() {
