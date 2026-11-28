@@ -3,7 +3,6 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -23,6 +22,18 @@ from app.rules.service import evaluate_rules_and_expiry
 from app.broker.router import router as broker_router
 from app.audit.router import router as audit_router
 from app.notifications.router import router as notifications_router
+from app.ai_voice import (
+    AssistantRequest,
+    ExplainRequest,
+    SpeechRequest,
+    TranscriptionRequest,
+    assistant,
+    explain,
+    normalize_numbers,
+    providers as voice_providers,
+    resolve_symbol,
+    router as ai_voice_router,
+)
 
 logger = logging.getLogger("tradeflow")
 
@@ -83,16 +94,22 @@ app.include_router(rules_router)
 app.include_router(broker_router)
 app.include_router(audit_router)
 app.include_router(notifications_router)
+app.include_router(ai_voice_router)
 
 
 @app.get("/api/health")
 def health():
+    voice_status = voice_providers.provider_status()
     return {
         "status": "ok",
         "yfinance_enabled": settings.ENABLE_YFINANCE,
+        "pollinations_configured": bool(settings.POLLINATIONS_API_KEY),
         "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
         "sarvam_configured": bool(settings.SARVAM_API_KEY),
         "wispr_configured": bool(settings.WISPR_API_KEY),
+        "mode": "integrated" if voice_status["pollinations"] else "demo",
+        "languages": {"en": "English", "hi": "Hindi", "kn": "Kannada", "mr": "Marathi", "gu": "Gujarati", "ta": "Tamil"},
+        "voice": voice_status,
     }
 
 
@@ -106,25 +123,3 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
     }
 
 
-class AssistantStubRequest(BaseModel):
-    message: str
-    language: str = "en"
-
-
-@app.post("/api/assistant/message")
-def assistant_stub(payload: AssistantStubRequest):
-    """Contract 2 stub endpoint for Person B & Person C parallel development."""
-    return {
-        "intent": "GENERAL_QUERY",
-        "message": f"Demo stub received: '{payload.message}'. Person B's assistant module will replace this.",
-        "language": payload.language,
-        "requires_clarification": False,
-        "clarification_question": None,
-        "action_type": "NONE",
-        "action_payload": {},
-        "requires_approval": False,
-        "sources": [],
-        "ui_action": "STAY",
-        "suggested_actions": [],
-        "extracted_entities": {},
-    }
