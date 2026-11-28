@@ -216,6 +216,17 @@ export default function LearnPage({ onAskVoice, onBackHome }: LearnPageProps) {
         </div>
       </section>
 
+      {/* GLOBAL LEARNING SECTION */}
+      <section className="global-learning" id="global-learning">
+        <h2>Global Learning Resources</h2>
+        <p>Explore curated articles, videos, and podcasts to deepen your market knowledge beyond the curriculum.</p>
+        <ul>
+          <li><a href="https://www.investopedia.com" target="_blank" rel="noopener">Investopedia</a></li>
+          <li><a href="https://www.barrons.com" target="_blank" rel="noopener">Barron's</a></li>
+          <li><a href="https://www.coursera.org/learn/financial-markets-global" target="_blank" rel="noopener">Coursera – Financial Markets</a></li>
+        </ul>
+      </section>
+
       {/* FILTER & SEARCH BAR */}
       <section className="learn-toolbar-wrap">
         <div className="learn-toolbar">

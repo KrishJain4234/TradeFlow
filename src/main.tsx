@@ -1,14 +1,20 @@
 import { useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import VoiceAssistant from './voice/VoiceAssistant'
 import LearnPage from './learn/LearnPage'
+import PortfolioPage from './portfolio/PortfolioPage'
 import {
-  ArrowDownRight, ArrowLeft, ArrowUpRight, Bell, BookOpen, ChevronDown,
-  CircleDollarSign, Command, Gem, GraduationCap, LayoutGrid, LineChart,
-  Mic, MoreHorizontal, Search, ShieldCheck, Sparkles, TrendingUp,
-  Wallet, X, Zap
+  ArrowUpRight, AudioLines, Bell, ChevronDown,
+  CircleDollarSign, Command, Gem, Globe2, GraduationCap, LayoutGrid, LineChart,
+  LockKeyhole, Mic, MoreHorizontal, Search, ShieldCheck, Sparkles, TrendingUp,
+  Wallet, X
 } from 'lucide-react'
+import { getLanguageOption, getMostFrequentLanguage, loadVoiceProfile, normalizeLanguageCode } from './voice/languages'
 import './styles.css'
+
+const DEMO_CREDENTIALS = { email: 'demo@tradeflow.in', password: 'TradeFlowDemo1!' }
+const DEMO_SESSION_KEY = 'tradeflow-demo-session'
 
 type Market = { name: string; value: string; delta: string; positive?: boolean }
 
@@ -40,8 +46,8 @@ const menuGroups = [
   ] },
 ]
 
-function Logo() {
-  return <div className="logo" aria-label="TradeFlow home"><span className="logo-mark"><span /></span><span>Trade<span className="logo-flow">Flow</span></span></div>
+function Logo({ onClick }: { onClick: () => void }) {
+  return <a href="/" className="logo logo-button" aria-label="TradeFlow home" onClick={onClick}><span className="logo-mark"><span /></span><span>Trade<span className="logo-flow">Flow</span></span></a>
 }
 
 function MarketTicker() {
@@ -57,11 +63,11 @@ function VoiceButton({ onClick }: { onClick: () => void }) {
   return <button className="voice-button" onClick={onClick}><Mic size={19} strokeWidth={2.4} /><span>Ask TradeFlow</span><kbd>⌘ K</kbd></button>
 }
 
-function Nav({ onMenu, menuOpen, onVoice, onPortfolio, onLearn }: { onMenu: () => void; menuOpen: boolean; onVoice: () => void; onPortfolio: () => void; onLearn: () => void }) {
+function Nav({ onMenu, menuOpen, onVoice, onPortfolio, onLearn, onHome, onAccount, isDemoLoggedIn }: { onMenu: () => void; menuOpen: boolean; onVoice: () => void; onPortfolio: () => void; onLearn: () => void; onHome: () => void; onAccount: () => void; isDemoLoggedIn: boolean }) {
   return <>
     <header className="nav-wrap">
       <div className="nav-inner">
-        <Logo />
+        <Logo onClick={onHome} />
         <div className="search-box"><Search size={18} /><input aria-label="Search investments" placeholder="Search stocks, ETFs, mutual funds" /><kbd>/</kbd></div>
         <nav className="desktop-nav">
           <button className="nav-link active" onClick={onPortfolio}><Wallet size={18} />Portfolio</button>
@@ -71,9 +77,10 @@ function Nav({ onMenu, menuOpen, onVoice, onPortfolio, onLearn }: { onMenu: () =
           <button className="nav-link learn-nav-link" onClick={onLearn}><GraduationCap size={18} />Learn</button>
           <button className={`nav-link more-link ${menuOpen ? 'selected' : ''}`} onClick={onMenu}><MoreHorizontal size={19} />More<ChevronDown size={15} /></button>
         </nav>
-        <div className="nav-actions"><VoiceButton onClick={onVoice} /><button className="account-button"><span className="account-avatar">K</span><span className="account-label">Sign up / Login</span><ChevronDown size={15} /></button></div>
+        <div className="nav-actions"><VoiceButton onClick={onVoice} /><button className="account-button" onClick={onAccount}><span className="account-avatar">{isDemoLoggedIn ? 'D' : 'K'}</span><span className="account-label">{isDemoLoggedIn ? 'Demo account' : 'Sign up / Login'}</span><ChevronDown size={15} /></button></div>
         <button className="mobile-menu-button" aria-label="Open menu" onClick={onMenu}><LayoutGrid size={21} /></button>
       </div>
+
     </header>
     {menuOpen && <MoreMenu onLearn={onLearn} />}
   </>
@@ -99,92 +106,67 @@ function PortfolioCard({ onView }: { onView: () => void }) {
   return <section className="section-pad portfolio-section"><div className="section-heading"><div><span className="section-kicker">YOUR PORTFOLIO</span><h2>A better view of your money.</h2></div><button className="text-button" onClick={onView}>View portfolio <ArrowUpRight size={16} /></button></div><div className="portfolio-grid"><div className="portfolio-main"><div className="portfolio-top"><div><span className="muted-label">Total invested value</span><strong className="portfolio-value">₹1,48,560</strong></div><div className="portfolio-return"><span>+₹14,820</span><strong>+11.08%</strong></div></div><div className="chart-meta"><span>Portfolio growth</span><div className="chart-tabs">{['1W', '1M', '1Y', 'All'].map(tab => <button className={active === tab ? 'active' : ''} onClick={() => setActive(tab)} key={tab}>{tab}</button>)}</div></div><div className="chart"><div className="chart-lines"><i /><i /><i /><i /></div><svg viewBox="0 0 600 180" preserveAspectRatio="none"><defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#1677E8" stopOpacity=".32" /><stop offset="1" stopColor="#1677E8" stopOpacity="0" /></linearGradient></defs><path d="M0 152 C30 145, 39 123, 68 131 S110 112, 138 125 S181 87, 211 110 S251 78, 280 90 S318 74, 350 85 S390 45, 422 70 S468 43, 500 55 S550 29, 600 18 V180 H0 Z" fill="url(#chartFill)" /><path d="M0 152 C30 145, 39 123, 68 131 S110 112, 138 125 S181 87, 211 110 S251 78, 280 90 S318 74, 350 85 S390 45, 422 70 S468 43, 500 55 S550 29, 600 18" fill="none" stroke="#43A2FF" strokeWidth="3" strokeLinecap="round" /></svg><span className="chart-tooltip">₹1,48,560 <small>Today, 4:00 PM</small></span></div><div className="chart-axis"><span>Nov 01</span><span>Nov 08</span><span>Nov 15</span><span>Nov 22</span></div></div><div className="holdings-card"><div className="holdings-heading"><span>Top holdings</span><button aria-label="More holdings"><MoreHorizontal size={18} /></button></div>{holdings.map(item => <div className="holding-row" key={item.symbol}><span className="holding-logo" style={{ background: item.color }}>{item.symbol.slice(0, 1)}</span><div className="holding-name"><strong>{item.name}</strong><small>{item.symbol}</small></div><div className="holding-amount"><strong>{item.amount}</strong><em className={item.positive ? 'up' : 'down'}>{item.return}</em></div></div>)}<button className="full-width-button" onClick={onView}>See all holdings <ArrowUpRight size={15} /></button></div></div></section>
 }
 
-const mockPositions = [
-  { name: 'HDFC Bank', symbol: 'HDFCBANK', units: '24 shares', average: '₹1,853.33', price: '₹2,010.00', value: '₹48,240', pnl: '+₹3,760', return: '+8.45%', positive: true, color: '#6aa9ff' },
-  { name: 'Reliance Industries', symbol: 'RELIANCE', units: '20 shares', average: '₹1,669.55', price: '₹1,741.00', value: '₹34,820', pnl: '+₹1,429', return: '+4.28%', positive: true, color: '#b47aff' },
-  { name: 'Infosys', symbol: 'INFY', units: '40 shares', average: '₹573.68', price: '₹566.00', value: '₹22,640', pnl: '-₹307', return: '-1.34%', positive: false, color: '#ffb454' },
-  { name: 'Tata Consultancy Services', symbol: 'TCS', units: '4 shares', average: '₹3,680.00', price: '₹4,250.00', value: '₹17,000', pnl: '+₹2,280', return: '+15.49%', positive: true, color: '#55c6ab' },
-  { name: 'ICICI Bank', symbol: 'ICICIBANK', units: '18 shares', average: '₹1,011.22', price: '₹1,436.67', value: '₹25,860', pnl: '+₹7,658', return: '+42.07%', positive: true, color: '#ee8194' },
-]
+function DemoLoginDialog({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
-const portfolioRanges = ['1W', '1M', '1Y', 'All']
-const portfolioChartPaths: Record<string, string> = {
-  '1W': 'M0 174 C50 166 75 182 120 152 S190 165 240 126 S310 139 360 107 S430 112 480 78 S550 96 600 60 S670 65 720 34',
-  '1M': 'M0 186 C42 179 56 154 94 166 S145 134 181 147 S222 121 264 132 S311 97 350 114 S398 89 438 101 S480 68 522 79 S569 55 610 66 S671 30 720 20',
-  '1Y': 'M0 198 C45 185 70 202 108 174 S163 182 201 152 S251 162 290 129 S344 146 382 111 S437 123 476 88 S530 101 570 67 S630 78 670 44 S700 34 720 16',
-  All: 'M0 206 C46 200 71 190 112 195 S164 164 203 174 S248 151 291 158 S340 132 382 143 S429 101 474 115 S523 84 568 93 S626 55 669 70 S700 28 720 18',
-}
-const portfolioChartLabels: Record<string, string[]> = {
-  '1W': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-  '1M': ['Nov 01', 'Nov 08', 'Nov 15', 'Nov 22', 'Now'],
-  '1Y': ['Dec 25', 'Mar 26', 'Jun 26', 'Sep 26', 'Now'],
-  All: ['2023', '2024', '2025', '2026', 'Now'],
-}
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (email.trim().toLowerCase() !== DEMO_CREDENTIALS.email || password !== DEMO_CREDENTIALS.password) {
+      setError('Those demo credentials don’t match. Please try again.')
+      return
+    }
+    onSuccess()
+  }
 
-function PortfolioPage({ onBack }: { onBack: () => void }) {
-  const [activeRange, setActiveRange] = useState('1M')
-  const chartPath = portfolioChartPaths[activeRange]
-
-  return <div className="portfolio-page">
-    <div className="portfolio-demo-banner" role="note">
-      <span className="portfolio-demo-mark"><Sparkles size={17} /></span>
-      <div><strong>Demo portfolio</strong><span>This is a demo portfolio. Sample values only—not connected to a live account.</span></div>
-      <span className="portfolio-demo-tag">MOCK DATA</span>
-    </div>
-
-    <div className="portfolio-page-heading">
-      <div>
-        <button className="portfolio-back" onClick={onBack}><ArrowLeft size={16} /> Back to overview</button>
-        <h1>My portfolio</h1>
-        <p>Track your investments and see how they’re performing.</p>
-      </div>
-      <span className="portfolio-updated">Last updated today, 4:00 PM</span>
-    </div>
-
-    <section className="portfolio-summary-grid" aria-label="Portfolio summary">
-      <article className="portfolio-summary-card"><span>Total portfolio value</span><strong>₹1,48,560</strong><small className="summary-positive"><TrendingUp size={14} /> +₹1,240 today</small></article>
-      <article className="portfolio-summary-card"><span>Total invested</span><strong>₹1,33,740</strong><small>Across 5 investments</small></article>
-      <article className="portfolio-summary-card"><span>Overall returns</span><strong className="summary-positive">+₹14,820</strong><small className="summary-positive">+11.08% all time</small></article>
-      <article className="portfolio-summary-card"><span>Today’s return</span><strong className="summary-positive">+₹1,240</strong><small className="summary-positive">+0.84% today</small></article>
+  return <div className="login-overlay" role="presentation">
+    <section className="login-dialog" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <button className="login-close" type="button" onClick={onClose} aria-label="Close sign in"><X size={19} /></button>
+      <span className="login-icon"><LockKeyhole size={21} /></span>
+      <span className="section-kicker">WELCOME TO TRADEFLOW</span>
+      <h2 id="login-title">Sign in to your portfolio</h2>
+      <p className="login-description">Use the demo account to explore the sample portfolio.</p>
+      <div className="demo-credentials"><strong>Demo credentials</strong><span>Email <b>{DEMO_CREDENTIALS.email}</b></span><span>Password <b>{DEMO_CREDENTIALS.password}</b></span></div>
+      <form className="login-form" onSubmit={handleSubmit}>
+        <label>Email address<input type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required /></label>
+        <label>Password<input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required /></label>
+        {error && <p className="login-error" role="alert">{error}</p>}
+        <button className="primary-button" type="submit">Continue to portfolio <ArrowUpRight size={16} /></button>
+      </form>
+      <p className="login-demo-note">Demo sign-in is stored in this browser only; it is not production authentication.</p>
     </section>
+  </div>
+}
 
-    <section className="portfolio-analysis-grid">
-      <article className="portfolio-panel portfolio-performance">
-        <div className="portfolio-panel-heading"><div><h2>Portfolio performance</h2><p>Value over the selected period</p></div><div className="portfolio-range-tabs" aria-label="Performance period">{portfolioRanges.map(range => <button key={range} className={activeRange === range ? 'active' : ''} aria-pressed={activeRange === range} onClick={() => setActiveRange(range)}>{range}</button>)}</div></div>
-        <div className="portfolio-chart-area">
-          <div className="portfolio-chart-guides"><span>₹1.5L</span><span>₹1.4L</span><span>₹1.3L</span><span>₹1.2L</span></div>
-          <svg viewBox="0 0 720 230" preserveAspectRatio="none" role="img" aria-label={`Mock portfolio value trend for ${activeRange}`}>
-            <defs><linearGradient id="portfolioPageFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#1677e8" stopOpacity=".2" /><stop offset="1" stopColor="#1677e8" stopOpacity="0" /></linearGradient></defs>
-            <path d={`${chartPath} V230 H0Z`} fill="url(#portfolioPageFill)" />
-            <path d={chartPath} fill="none" stroke="#1677e8" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-        </div>
-        <div className="portfolio-chart-axis">{portfolioChartLabels[activeRange].map(label => <span key={label}>{label}</span>)}</div>
-      </article>
+function VoiceProfilePanel() {
+  const voiceProfile = loadVoiceProfile()
+  const languagesSpoken = Object.entries(voiceProfile.languageCounts)
+    .map(([code, count]) => ({ code: normalizeLanguageCode(code), count }))
+    .filter((entry): entry is { code: string; count: number } => entry.code !== null && typeof entry.count === 'number' && entry.count > 0)
+    .sort((a, b) => b.count - a.count)
+  const primaryLanguage = getMostFrequentLanguage(voiceProfile)
+  const otherLanguageCount = Math.max(0, languagesSpoken.length - (primaryLanguage ? 1 : 0))
+  const totalVoiceInteractions = languagesSpoken.reduce((total, language) => total + language.count, 0)
 
-      <article className="portfolio-panel portfolio-allocation">
-        <div className="portfolio-panel-heading"><div><h2>Asset allocation</h2><p>By current value</p></div></div>
-        <div className="allocation-content"><div className="allocation-donut"><div><strong>5</strong><span>assets</span></div></div><div className="allocation-legend">
-          <div><i className="allocation-blue" /><span>HDFC Bank</span><strong>32.5%</strong></div>
-          <div><i className="allocation-purple" /><span>Reliance</span><strong>23.4%</strong></div>
-          <div><i className="allocation-orange" /><span>Infosys</span><strong>15.2%</strong></div>
-          <div><i className="allocation-teal" /><span>TCS</span><strong>11.4%</strong></div>
-          <div><i className="allocation-rose" /><span>ICICI Bank</span><strong>17.5%</strong></div>
-        </div></div>
-      </article>
+  return <div className="voice-profile-content">
+    <section className="voice-profile-intro">
+      <span className="voice-profile-icon"><AudioLines size={22} /></span>
+      <div><span className="section-kicker">YOUR VOICE</span><h2>Voice profile</h2><p>Languages are based on the voice interactions recorded in this browser.</p></div>
     </section>
-
-    <section className="portfolio-panel portfolio-positions">
-      <div className="portfolio-panel-heading"><div><h2>Your holdings</h2><p>5 investments in this demo portfolio</p></div><span className="portfolio-total-value">Total value <strong>₹1,48,560</strong></span></div>
-      <div className="portfolio-table-wrap"><table className="portfolio-table">
-        <thead><tr><th>Investment</th><th>Quantity</th><th>Avg. price</th><th>Market price</th><th>Current value</th><th>Returns</th></tr></thead>
-        <tbody>{mockPositions.map(position => <tr key={position.symbol}>
-          <td><div className="portfolio-position-name"><span className="holding-logo" style={{ background: position.color }}>{position.symbol.slice(0, 1)}</span><span><strong>{position.name}</strong><small>{position.symbol}</small></span></div></td>
-          <td>{position.units}</td><td>{position.average}</td><td>{position.price}</td><td><strong>{position.value}</strong></td>
-          <td><span className={`portfolio-position-return ${position.positive ? 'positive' : 'negative'}`}>{position.positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{position.return}<small>{position.pnl}</small></span></td>
-        </tr>)}</tbody>
-      </table></div>
-      <p className="portfolio-disclaimer">Illustrative sample values for demo purposes only. This page is not connected to a brokerage account.</p>
+    <section className="voice-profile-stats" aria-label="Voice profile summary">
+      <article className="voice-profile-stat voice-profile-primary"><span><Globe2 size={15} /> Primary language</span><strong>{primaryLanguage ? getLanguageOption(primaryLanguage).name : 'Not detected yet'}</strong><small>{primaryLanguage ? getLanguageOption(primaryLanguage).nativeName : 'Try a voice interaction to build your profile'}</small></article>
+      <article className="voice-profile-stat"><span>Other languages detected</span><strong>{otherLanguageCount}</strong><small>{otherLanguageCount === 1 ? 'additional language' : 'additional languages'}</small></article>
+      <article className="voice-profile-stat"><span>Voice interactions</span><strong>{totalVoiceInteractions}</strong><small>Recorded on this device</small></article>
+    </section>
+    <section className="portfolio-panel voice-language-panel">
+      <div className="portfolio-panel-heading"><div><h2>Languages in your voice profile</h2><p>Counts update when you use voice input.</p></div></div>
+      {languagesSpoken.length
+        ? <div className="voice-language-list">{languagesSpoken.map(language => {
+            const option = getLanguageOption(language.code)
+            return <div className="voice-language-row" key={language.code}><span><strong>{option.name}</strong><small>{option.nativeName}</small></span><span className={language.code === primaryLanguage ? 'voice-primary-badge' : ''}>{language.count} {language.count === 1 ? 'interaction' : 'interactions'}{language.code === primaryLanguage ? ' · Primary' : ''}</span></div>
+          })}</div>
+        : <p className="voice-profile-empty">No spoken languages have been recorded yet. Start a voice interaction and your profile will appear here.</p>}
     </section>
   </div>
 }
@@ -198,23 +180,36 @@ function App() {
   const [voiceOpen, setVoiceOpen] = useState(false)
   const [voicePrompt, setVoicePrompt] = useState('')
   const [portfolioOpen, setPortfolioOpen] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [continueToPortfolio, setContinueToPortfolio] = useState(false)
+  const [isDemoLoggedIn, setIsDemoLoggedIn] = useState(() => localStorage.getItem(DEMO_SESSION_KEY) === 'active')
   const [learnOpen, setLearnOpen] = useState(false)
   const [activeNav, setActiveNav] = useState('Home')
   const greeting = useMemo(() => new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening', [])
 
-  const openPortfolio = () => { setActiveNav('Portfolio'); setPortfolioOpen(true); setLearnOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const showPortfolio = () => { setActiveNav('Portfolio'); setPortfolioOpen(true); setLearnOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const openPortfolio = () => {
+    if (!isDemoLoggedIn) { setContinueToPortfolio(true); setLoginOpen(true); return }
+    showPortfolio()
+  }
   const openLearn = () => { setActiveNav('Learn'); setLearnOpen(true); setPortfolioOpen(false); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  const openHome = () => { setActiveNav('Home'); setPortfolioOpen(false); setLearnOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const openHome = () => { setActiveNav('Home'); setPortfolioOpen(false); setLearnOpen(false); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const handleAskVoice = (prompt = '') => { setVoicePrompt(prompt); setVoiceOpen(true) }
+  const handleDemoLogin = () => {
+    localStorage.setItem(DEMO_SESSION_KEY, 'active')
+    setIsDemoLoggedIn(true)
+    setLoginOpen(false)
+    if (continueToPortfolio) { setContinueToPortfolio(false); showPortfolio() }
+  }
 
   return <div className="app-shell">
     <MarketTicker />
-    <Nav menuOpen={menuOpen} onMenu={() => setMenuOpen(value => !value)} onVoice={() => handleAskVoice()} onPortfolio={openPortfolio} onLearn={openLearn} />
+    <Nav menuOpen={menuOpen} onMenu={() => setMenuOpen(value => !value)} onVoice={() => handleAskVoice()} onPortfolio={openPortfolio} onLearn={openLearn} onHome={openHome} onAccount={() => { if (!isDemoLoggedIn) setLoginOpen(true) }} isDemoLoggedIn={isDemoLoggedIn} />
     <main>
       {learnOpen
         ? <LearnPage onAskVoice={handleAskVoice} onBackHome={openHome} />
         : portfolioOpen
-        ? <PortfolioPage onBack={openHome} />
+        ? <PortfolioPage onBack={openHome} voiceProfileSlot={<VoiceProfilePanel />} />
         : <>
             <Hero onVoice={() => handleAskVoice()} />
             <div className="welcome-strip">
@@ -224,7 +219,9 @@ function App() {
                 <button onClick={openPortfolio}><Wallet size={16} /> View demo portfolio</button>
                 <button onClick={openLearn}><GraduationCap size={16} /> Learn investing</button>
               </div>
+
             </div>
+
             <MarketOverview />
             <PortfolioCard onView={openPortfolio} />
             <section className="cta-section">
@@ -234,7 +231,7 @@ function App() {
           </>
       }
     </main>
-    <footer><Logo /><span>© 2026 TradeFlow. Built for thoughtful investors.</span><div><button>Privacy</button><button>Help center</button></div></footer>
+    <footer><Logo onClick={openHome} /><span>© 2026 TradeFlow. Built for thoughtful investors.</span><div><button>Privacy</button><button>Help center</button></div></footer>
     <div className="mobile-bottom-nav">
       {(['Home', 'Markets', 'Portfolio', 'Learn', 'Alerts'] as const).map((item, index) =>
         <button
@@ -248,6 +245,7 @@ function App() {
       )}
     </div>
     {voiceOpen && <VoicePanel onClose={() => setVoiceOpen(false)} initialPrompt={voicePrompt} />}
+    {loginOpen && <DemoLoginDialog onClose={() => { setLoginOpen(false); setContinueToPortfolio(false) }} onSuccess={handleDemoLogin} />}
   </div>
 }
 

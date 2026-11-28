@@ -4,7 +4,7 @@ TradeFlow is a voice-first financial access prototype for Indian retail investor
 
 **Current branch:** `marmik`
 **Primary market:** India
-**Application type:** React web applications, FastAPI backend, PostgreSQL database
+**Application type:** React web application, FastAPI backend, PostgreSQL database
 **Product brief:** [TradeFlow PRD](TradeFlow_PRD_v1.6_Stock_Page_Translation_Routing.md)
 **Two-day build plan and team split:** [Build plan PDF](TradeFlow%20%E2%80%93%202-Day%20Build%20Plan%20%26%20Team%20Split.pdf)
 
@@ -12,27 +12,22 @@ TradeFlow is a voice-first financial access prototype for Indian retail investor
 
 The product is intended for first-time investors, retail investors, active traders, and sub-brokers. The hackathon MVP demonstrates a familiar market dashboard, conversational access, sample account data, simulated order preparation/approval, conditional alerts, and a broker review workflow. It is not a live brokerage and does not connect to an exchange for order execution.
 
-The repository currently contains two frontend applications:
-
-1. **Platform console (`frontend/`)** — the incoming React/TypeScript application used by Docker Compose. It contains the approvals, rules, and broker-console views and calls the authenticated platform APIs.
-2. **Voice dashboard prototype (repository root `src/`)** — the earlier TradeFlow dashboard prototype with the floating AI/voice panel. This is a separate Vite app. Docker Compose does not currently serve it, and its dashboard figures are static presentation data.
-
-The backend exposes both the platform APIs and the AI/voice API. The two frontends have not yet been consolidated into a single complete PRD experience. See [Current implementation and gaps](#current-implementation-and-gaps) before treating any screen or provider data as production-ready.
+The repository has one frontend: the root React/Vite application in `src/`, built by Docker Compose. It contains the dashboard, demo portfolio and learning views, and floating AI/voice panel. The TradeFlow navbar brand links back to `/` and resets the app to its home dashboard. The backend exposes both the platform APIs and the AI/voice API. Some areas remain API-only; see [Current implementation and gaps](#current-implementation-and-gaps) before treating any screen or provider data as production-ready.
 
 ## Product modules and implementation status
 
 | PRD area | What the repository contains | Status / limit |
 |---|---|---|
-| FR-01 Dashboard | Seeded indices, stocks, stock history, watchlist, portfolio, and dashboard API. The root dashboard prototype displays hard-coded sample cards. | Partial. The Compose console does not yet include the full dashboard/stock-detail UI; sample root-dashboard values are not live data. |
+| FR-01 Dashboard | Dashboard and demo portfolio views, plus seeded indices, stocks, stock history, watchlist, portfolio, and dashboard APIs. | Partial. Displayed dashboard/portfolio cards are sample data; connected stock detail and a fully API-backed dashboard remain incomplete. |
 | FR-02 Voice assistant | Floating composer in the root dashboard; microphone control, editable transcript, browser speech recognition fallback, five-second silence handling, typed input, hands-free conversation loop, Wispr REST adapter, and speech playback fallback. | Partial. Wispr uses a backend REST transcription call, not the PRD's token/WebSocket streaming design. Voice order approval is not wired through the voice panel end to end. |
 | FR-03 Languages | English, Hindi, Kannada, Marathi, Gujarati, and Tamil; Sarvam translation adapter; Unicode digit/number-word/Indian-scale normalization; original and normalized text metadata. | Partial. The personal nickname/ticker dictionary is stored in browser local storage; persistent user voice profiles and dictionary CRUD APIs are not implemented. |
 | FR-04 Research | Local predefined research answers, Anthropic tool-use adapter, Yahoo Finance prototype quote/profile/news adapters, seeded stock information and history. | Partial. Provider credentials and network are required for live retrieval. Seeded and cached prices must be treated as demo/delayed data; no exchange-authoritative feed is connected. |
 | FR-05 Order preparation | AI may return an order preview payload. Platform order APIs validate symbols, holdings/balance, compute charges using `Decimal`, create approval-bound previews, and process simulated fills after approval. | Partial integration. The AI tool does not create the platform order record itself. No real broker/exchange submission exists. |
-| FR-06 Alerts/rules | Persistent above/below rules, pause/resume/delete endpoints, periodic in-process evaluator, notifications, and expiry handling. | Partial. Current platform rule creation is a manual API/UI workflow. Rule actions do not automatically prepare or submit orders; external live price monitoring is not production-grade. |
-| FR-07 Portfolio | Deterministic `Decimal` calculations for balances, holdings, valuation, P/L, allocation, and top holdings; authenticated portfolio API. | Backend implemented; a connected portfolio screen and AI-to-portfolio tool are not complete in the current frontends/agent. |
-| FR-08 Explain terms | Local glossary endpoint and popup in the root voice panel; Sarvam, Windows SAPI, and browser speech fallback chain. | Partial. Explanations use the local glossary; no contextual term links are integrated across the platform console. |
-| FR-09 Broker console | Broker-scoped client/request APIs, approval and rejection endpoints, and a broker-console page. | Prototype implementation. It uses demo client data and simulated approvals, not broker connectivity or a regulated mandate. |
-| FR-10 Notifications/activity | Persisted notifications, mark-read endpoint, audit event feed, and hash-chain verification endpoint. | Backend implemented; a complete activity/audit history UI and all event types are not present. |
+| FR-06 Alerts/rules | Persistent above/below rule APIs, pause/resume/delete endpoints, periodic in-process evaluator, notifications, and expiry handling. | Partial. Rule management has no screen in the frontend. Rules do not automatically prepare or submit orders; external live price monitoring is not production-grade. |
+| FR-07 Portfolio | Demo portfolio view and deterministic `Decimal` calculations for balances, holdings, valuation, P/L, allocation, and top holdings; authenticated portfolio API. | Partial. The view uses sample data and is not connected to the portfolio API; the AI portfolio tool is not connected. |
+| FR-08 Explain terms | Local glossary endpoint and popup in the voice panel; Sarvam, Windows SAPI, and browser speech fallback chain. | Partial. Explanations use the local glossary; contextual term links are not integrated throughout the dashboard. |
+| FR-09 Broker console | Broker-scoped client/request APIs, approval and rejection endpoints. | Backend prototype only. There is no broker-console page; workflows use demo client data and simulated approvals. |
+| FR-10 Notifications/activity | Persisted notifications, mark-read endpoint, audit event feed, and hash-chain verification endpoint. | Backend implemented; there is no complete activity/audit history UI and not all event types are present. |
 | FR-11 Settings/security | Registration/login/logout, expiring server-side sessions, Argon2 password hashing, HttpOnly session cookie, CSRF token checks, role and user scoping, audit events. | Partial. No full settings screen, MFA/step-up flow, TLS deployment, managed secrets, or production security review is included. |
 | Stock detail and safe navigation | Stock quote/history APIs and structured assistant fields for UI actions/suggestions. | Partial. A dedicated connected stock-detail page, allowlisted route handling, and order/conversation restoration across navigation are not completed. |
 
@@ -100,8 +95,7 @@ Supported language codes are `en`, `hi`, `kn`, `mr`, `gu`, and `ta`. The browser
 
 | Layer | Technology / responsibility |
 |---|---|
-| Platform frontend | React 18, TypeScript, Vite 5, React Router, Tailwind CSS (`frontend/`) |
-| Voice dashboard prototype | React, TypeScript, Vite, Lucide icons (`src/` at repository root) |
+| Frontend | React, TypeScript, Vite, Lucide icons (`src/` at repository root) |
 | API | Python 3.12, FastAPI, Pydantic |
 | Persistence | PostgreSQL 16, SQLAlchemy 2, Alembic scaffold |
 | Authentication | Argon2 password hashing, hashed session tokens, HttpOnly/SameSite cookies, CSRF tokens, role and object checks |
@@ -109,7 +103,7 @@ Supported language codes are `en`, `hi`, `kn`, `mr`, `gu`, and `ta`. The browser
 | AI | Anthropic Messages API tool use (optional) and deterministic Demo Mode |
 | Speech/translation | Wispr Flow REST, Sarvam REST, Windows SAPI, browser Web Speech APIs |
 | Market data | Seeded demo database; optional yfinance prototype lookup and Yahoo Finance research adapters |
-| Runtime | Docker Compose for PostgreSQL, API, and the root dashboard |
+| Runtime | Docker Compose for PostgreSQL, API, and the single frontend |
 
 RabbitMQ/Celery and Kafka are described in the PRD as later options; they are not configured in this repository. An outbox model exists, but a durable event publisher/consumer pipeline is not implemented. PostgreSQL is the source of truth for the platform's financial state.
 
@@ -135,8 +129,9 @@ backend/
     limits.py       in-memory per-client request limits
   tests/            assistant, provider, transcript-matrix and platform checks
   alembic/          migration environment/scaffold
-frontend/           platform console (approvals, rules, broker console)
-src/                root dashboard and voice assistant
+src/                dashboard, demo portfolio, learning views and voice panel
+src/voice/          speech, language and AI assistant UI components
+src/learn/          learning view and glossary content
 docs/
   SECURITY.md       implemented security architecture and production gaps
   UI_SPEC.md        visual reference notes and responsive design direction
@@ -242,14 +237,7 @@ docker compose up --build
 
 Compose starts PostgreSQL, the FastAPI backend, and the **root dashboard** from `src/`. The dashboard is at `http://localhost:5173`; the API is at `http://localhost:8000` and its docs are at `http://localhost:8000/docs`.
 
-The separate **platform console** can be served from a second terminal on another port while the API is running:
-
-```powershell
-npm ci
-npm run dev -- --port 5174
-```
-
-Open `http://localhost:5174` for the platform console. The root dashboard uses `VITE_API_URL` or defaults to `http://localhost:8000`.
+The frontend uses `VITE_API_URL` or defaults to `http://localhost:8000`.
 
 ### Run without Docker
 
@@ -262,19 +250,11 @@ pip install -r backend/requirements.txt
 uvicorn app.main:app --app-dir backend --reload
 ```
 
-Run the platform console in a second terminal:
+Run the frontend in a second terminal from the repository root:
 
 ```powershell
-cd frontend
 npm ci
 npm run dev
-```
-
-To run the voice dashboard as well, use a third terminal from the repository root and a free port such as `5174`:
-
-```powershell
-npm ci
-npm run dev -- --port 5174
 ```
 
 ## Tests and build checks
@@ -287,15 +267,9 @@ pytest backend/tests -q
 
 The suite includes the platform flow, provider-adapter mocks, deterministic Demo Mode checks, and a 60-transcript parser/intent matrix. These tests do not make live calls to Wispr, Sarvam, Anthropic, or Yahoo Finance and do not exercise a physical microphone.
 
-Build each separate frontend from the repository root:
+Build the frontend from the repository root:
 
 ```powershell
-npm ci
-npm run build
-```
-
-```powershell
-cd frontend
 npm ci
 npm run build
 ```
@@ -306,8 +280,7 @@ The documented manual matrix is [`docs/voice-testing.md`](docs/voice-testing.md)
 
 The project is an MVP prototype, not the full PRD completion. In particular:
 
-- The platform console in `frontend/` and the root dashboard are separate applications; their API is unified, but their UI navigation is not.
-- The stock-detail page, connected full dashboard/portfolio views, settings/preferences page, and complete route-aware conversation restoration are still missing.
+- The stock-detail page, fully API-connected dashboard/portfolio views, rules management, approvals history, broker console, settings/preferences, and complete route-aware conversation restoration remain missing from the frontend.
 - Wispr integration is REST-based; the PRD's short-lived token and streaming WebSocket flow is not implemented.
 - Personal dictionaries and selected language live in browser local storage, not the authenticated database voice-profile APIs.
 - AI portfolio/watchlist tools explicitly report unavailable rather than reading account tables. Voice-generated order and alert payloads are not persisted through the platform order/rule APIs.
