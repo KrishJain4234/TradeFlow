@@ -12,22 +12,80 @@ import './portfolio.css'
 
 const RANGES = ['1D', '1W', '1M', '6M', '1Y', 'All']
 
-const CHART_PATHS: Record<string, string> = {
-  '1D': 'M0 180 C40 174 60 165 100 158 S160 148 200 140 S250 130 300 118 S360 108 400 100 S450 88 490 76 S540 62 580 50 S620 36 680 20 S720 10 760 4',
-  '1W': 'M0 190 C50 180 80 195 130 170 S200 180 250 155 S310 162 360 135 S420 148 470 118 S525 128 570 100 S625 80 670 58 S710 42 760 22',
-  '1M': 'M0 200 C45 192 72 178 115 185 S175 162 215 172 S265 148 308 158 S358 130 400 142 S448 115 490 128 S538 100 582 112 S635 78 678 90 S720 55 760 30',
-  '6M': 'M0 210 C48 202 75 215 118 195 S178 206 220 184 S272 194 315 170 S370 180 414 155 S462 165 505 138 S556 148 600 120 S650 90 695 62 S730 40 760 18',
-  '1Y': 'M0 220 C50 210 78 198 122 207 S185 194 228 203 S278 188 322 196 S376 180 420 190 S468 172 512 183 S562 155 608 168 S658 130 702 90 S738 55 760 22',
-  All:  'M0 225 C52 218 80 210 125 215 S188 205 232 212 S283 198 328 205 S382 192 428 200 S477 185 522 194 S572 165 618 178 S666 142 710 108 S740 72 760 28',
+// Deterministic realistic market-style normalized series (0..1 range, ending near current value)
+function generateMarketSeries(seed: number, count: number, startLevel: number, endLevel: number, volatility: number): number[] {
+  const pts: number[] = []
+  let val = startLevel
+  const drift = (endLevel - startLevel) / (count - 1)
+  for (let i = 0; i < count; i++) {
+    const t = i / (count - 1)
+    // Combine multi-frequency waves + deterministic pseudo-random spikes for authentic market swings
+    const s1 = Math.sin(i * 0.43 + seed * 1.7) * 0.45
+    const s2 = Math.cos(i * 1.13 + seed * 3.1) * 0.35
+    const s3 = Math.sin(i * 2.37 + seed * 0.9) * 0.25
+    const spike = Math.sin(i * 0.19 + seed * 2.3) > 0.72 ? Math.sin(i * 3.1 + seed) * 0.55 : 0
+    val = startLevel + drift * i + (s1 + s2 + s3 + spike) * volatility * Math.sin(Math.PI * Math.min(1, Math.max(0.08, t)))
+    pts.push(val)
+  }
+  pts[pts.length - 1] = endLevel
+  return pts
 }
 
-const CHART_LABELS: Record<string, string[]> = {
-  '1D': ['9AM','11AM','1PM','3PM','4PM'],
-  '1W': ['Mon','Tue','Wed','Thu','Fri'],
-  '1M': ['Nov 01','Nov 08','Nov 15','Nov 22','Now'],
-  '6M': ['Jun','Jul','Aug','Sep','Oct','Nov'],
-  '1Y': ['Dec 25','Mar 26','Jun 26','Sep 26','Now'],
-  All:  ['2023','2024','2025','2026','Now'],
+const RANGE_SERIES: Record<string, { pts: number[]; labels: string[] }> = {
+  '1D': {
+    pts: generateMarketSeries(1, 72, 3.84, 3.92, 0.045),
+    labels: ['9:15', '10:00', '10:45', '11:30', '12:15', '1:00', '1:45', '2:30', '3:15', '4:00'],
+  },
+  '1W': {
+    pts: generateMarketSeries(2, 78, 3.74, 3.92, 0.08),
+    labels: ['Mon', 'Mon PM', 'Tue', 'Tue PM', 'Wed', 'Wed PM', 'Thu', 'Thu PM', 'Fri', 'Now'],
+  },
+  '1M': {
+    pts: generateMarketSeries(3, 84, 3.46, 3.92, 0.16),
+    labels: ['Nov 01', 'Nov 04', 'Nov 07', 'Nov 10', 'Nov 13', 'Nov 16', 'Nov 19', 'Nov 22', 'Nov 25', 'Now'],
+  },
+  '6M': {
+    pts: generateMarketSeries(4, 96, 3.05, 3.92, 0.24),
+    labels: ['Jun 26', 'Jun 15', 'Jul 26', 'Jul 15', 'Aug 26', 'Sep 26', 'Oct 26', 'Nov 26'],
+  },
+  '1Y': {
+    pts: generateMarketSeries(5, 110, 2.75, 3.92, 0.34),
+    labels: ['Dec 25', 'Jan 26', 'Feb 26', 'Mar 26', 'Apr 26', 'May 26', 'Jun 26', 'Jul 26', 'Aug 26', 'Sep 26', 'Oct 26', 'Nov 26'],
+  },
+  All: {
+    pts: generateMarketSeries(6, 120, 1.95, 3.92, 0.38),
+    labels: ['2022', '2022 H2', '2023', '2023 H2', '2024', '2024 H2', '2025', '2025 H2', '2026', 'Now'],
+  },
+}
+
+function buildSmoothMarketPath(pts: number[], w: number, h: number, padY = 14) {
+  const min = Math.min(...pts)
+  const max = Math.max(...pts)
+  const span = max - min || 1
+  const coords = pts.map((v, i) => ({
+    x: (i / (pts.length - 1)) * w,
+    y: padY + (1 - (v - min) / span) * (h - padY * 2),
+  }))
+
+  let d = `M${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[Math.max(0, i - 1)]
+    const p1 = coords[i]
+    const p2 = coords[i + 1]
+    const p3 = coords[Math.min(coords.length - 1, i + 2)]
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
+  }
+
+  const ticks = Array.from({ length: 6 }, (_, i) => {
+    const val = max - (i / 5) * span
+    return `₹${val.toFixed(2)}L`
+  })
+
+  return { d, coords, ticks }
 }
 
 function CompanyLogo({ domain, name, color }: { domain: string; name: string; color: string }) {
@@ -88,7 +146,8 @@ function NoteModal({ position, onClose }: { position: Position; onClose: () => v
 export default function PortfolioPage({ onBack, voiceProfileSlot }: { onBack: () => void; voiceProfileSlot?: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>(loadPositions)
   const [activeTab, setActiveTab] = useState<'overview' | 'voice-profile'>('overview')
-  const [range, setRange] = useState('1M')
+  const [range, setRange] = useState('1Y')
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [noteTarget, setNoteTarget] = useState<Position | null>(null)
   const [expandedSectors, setExpandedSectors] = useState<Set<string>>(() => new Set(Object.keys(SECTOR_COLORS)))
@@ -215,37 +274,71 @@ export default function PortfolioPage({ onBack, voiceProfileSlot }: { onBack: ()
 
       {/* ── CHART + SECTOR DONUT ── */}
       <div className="pf-chart-row">
-        <div className="pf-chart-card">
-          <div className="pf-chart-header">
-            <div>
-              <div className="pf-label">Portfolio Performance</div>
-              <div className="pf-chart-value">{fmt(tv)}</div>
+        {(() => {
+          const series = RANGE_SERIES[range]
+          const scale = tv / 392000
+          const scaledPts = series.pts.map(v => v * scale)
+          const { d, coords, ticks } = buildSmoothMarketPath(scaledPts, 760, 220)
+          const activePt = hoverIdx !== null ? coords[hoverIdx] : null
+          const activeVal = hoverIdx !== null ? scaledPts[hoverIdx] : null
+          return (
+            <div className="pf-chart-card">
+              <div className="pf-chart-header">
+                <div>
+                  <div className="pf-label">Portfolio Performance</div>
+                  <div className="pf-chart-value">
+                    {activeVal !== null ? `₹${activeVal.toFixed(2)}L` : fmt(tv)}
+                  </div>
+                </div>
+              </div>
+              <div className="pf-chart-area pf-chart-area-right">
+                <svg
+                  viewBox="0 0 760 220"
+                  preserveAspectRatio="none"
+                  className="pf-chart-svg"
+                  onMouseMove={e => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                    setHoverIdx(Math.round(ratio * (scaledPts.length - 1)))
+                  }}
+                  onMouseLeave={() => setHoverIdx(null)}
+                >
+                  <defs>
+                    <linearGradient id="pfGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stopColor="#19d49e" stopOpacity=".10" />
+                      <stop offset="1" stopColor="#19d49e" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {[0, 1, 2, 3, 4, 5].map(i => {
+                    const y = 14 + (i / 5) * (220 - 28)
+                    return <line key={i} x1="0" y1={y} x2="760" y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                  })}
+                  <path d={`${d} L760 220 L0 220 Z`} fill="url(#pfGrad)" />
+                  <path d={d} fill="none" stroke="#19d49e" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                  {activePt && (
+                    <>
+                      <line x1={activePt.x} y1="0" x2={activePt.x} y2="220" stroke="rgba(255,255,255,0.22)" strokeDasharray="3 3" strokeWidth="1" />
+                      <circle cx={activePt.x} cy={activePt.y} r="4.5" fill="#19d49e" stroke="#111a24" strokeWidth="2" />
+                    </>
+                  )}
+                </svg>
+                <div className="pf-chart-guides pf-chart-guides-right">
+                  {ticks.map((t, i) => <span key={i}>{t}</span>)}
+                </div>
+              </div>
+              <div className="pf-chart-axis pf-chart-axis-full">
+                {series.labels.map(l => <span key={l}>{l}</span>)}
+              </div>
+              <div className="pf-chart-footer-tabs">
+                <div className="pf-range-tabs pf-range-pills">
+                  {RANGES.map(r => (
+                    <button key={r} className={range === r ? 'active' : ''} onClick={() => setRange(r)}>{r}</button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="pf-range-tabs">
-              {RANGES.map(r => (
-                <button key={r} className={range === r ? 'active' : ''} onClick={() => setRange(r)}>{r}</button>
-              ))}
-            </div>
-          </div>
-          <div className="pf-chart-area">
-            <div className="pf-chart-guides">
-              <span>₹2.5L</span><span>₹2.0L</span><span>₹1.5L</span><span>₹1.0L</span>
-            </div>
-            <svg viewBox="0 0 760 240" preserveAspectRatio="none" className="pf-chart-svg">
-              <defs>
-                <linearGradient id="pfGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#18c875" stopOpacity=".25" />
-                  <stop offset="1" stopColor="#18c875" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path d={`${CHART_PATHS[range]} V240 H0Z`} fill="url(#pfGrad)" />
-              <path d={CHART_PATHS[range]} fill="none" stroke="#18c875" strokeWidth="2.5" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div className="pf-chart-axis">
-            {CHART_LABELS[range].map(l => <span key={l}>{l}</span>)}
-          </div>
-        </div>
+          )
+        })()}
 
         <div className="pf-donut-card">
           <div className="pf-label" style={{ marginBottom: 16 }}>Sector Diversification</div>
