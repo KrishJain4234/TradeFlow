@@ -237,6 +237,8 @@ docker compose up --build
 
 Compose starts PostgreSQL, the FastAPI backend, and the **root dashboard** from `src/`. The dashboard is at `http://localhost:5173`; the API is at `http://localhost:8000` and its docs are at `http://localhost:8000/docs`.
 
+Frontend edits should appear through Vite's live reload, and backend edits should restart the API automatically. Compose enables polling for both file watchers to detect changes reliably through Docker Desktop bind mounts on Windows. Keep `docker compose up` running while you edit; rebuild with `docker compose up --build` only after changing dependencies or Dockerfiles.
+
 The frontend uses `VITE_API_URL` or defaults to `http://localhost:8000`.
 
 ### Run without Docker

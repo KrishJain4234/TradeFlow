@@ -82,12 +82,12 @@ function Nav({ onMenu, menuOpen, onVoice, onPortfolio, onLearn, onHome, onAccoun
       </div>
 
     </header>
-    {menuOpen && <MoreMenu onLearn={onLearn} />}
+    {menuOpen && <MoreMenu onLearn={onLearn} onPortfolio={onPortfolio} onClose={onMenu} />}
   </>
 }
 
-function MoreMenu({ onLearn }: { onLearn: () => void }) {
-  return <div className="more-menu"><div className="menu-heading">Explore TradeFlow <X size={17} /></div>{menuGroups.map(group => <div className="menu-group" key={group.title}><div className="menu-group-title">{group.title}</div><div className="menu-grid">{group.items.map(item => { const Icon = item.icon; return <button className="menu-tile" key={item.label} onClick={item.label === 'Learn' ? onLearn : undefined}><span className={`menu-icon ${item.tone}`}><Icon size={20} /></span><span>{item.label}</span></button> })}</div></div>)}</div>
+function MoreMenu({ onLearn, onPortfolio, onClose }: { onLearn: () => void; onPortfolio: () => void; onClose: () => void }) {
+  return <div className="more-menu"><div className="menu-heading">Explore TradeFlow <button type="button" className="menu-close-btn" onClick={onClose} aria-label="Close menu"><X size={17} /></button></div>{menuGroups.map(group => <div className="menu-group" key={group.title}><div className="menu-group-title">{group.title}</div><div className="menu-grid">{group.items.map(item => { const Icon = item.icon; return <button className="menu-tile" key={item.label} onClick={item.label === 'Learn' ? onLearn : item.label === 'Portfolio' ? () => { onClose(); onPortfolio() } : undefined}><span className={`menu-icon ${item.tone}`}><Icon size={20} /></span><span>{item.label}</span></button> })}</div></div>)}</div>
 }
 
 function Hero({ onVoice }: { onVoice: () => void }) {
