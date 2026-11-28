@@ -343,3 +343,27 @@ main { background: #f8fafc; color: #132033; }.hero-shell { position: relative; m
 .login-error { margin: 0; color: #c53b50; font-size: 11px; }
 .login-demo-note { margin: 15px 0 0; color: #8995a2; font-size: 10px; line-height: 1.5; text-align: center; }
 @media (max-width: 760px) { .voice-profile-stats { grid-template-columns: 1fr; gap: 8px; }.voice-profile-stat { min-height: 105px; padding: 15px; }.voice-profile-intro { padding: 17px; }.login-dialog { padding: 25px 20px; }.voice-language-row { align-items: flex-start; flex-direction: column; gap: 7px; } }
+
+/* Light monochrome theme */
+:root { color:#111; background:#fff; }
+body,.app-shell,main { background:#fff; color:#111; }
+.ticker,.nav-wrap { background:#fff; color:#111; border-color:#e5e5e5; }
+.ticker-item { border-color:#ededed; }.ticker-item b,.ticker-item strong { color:#111; }
+.logo,.logo-flow,.nav-link,.mobile-menu-button { color:#111; }.section-kicker,.text-button { color:#111; }
+.logo-image { width:54px; height:54px; display:block; flex:none; object-fit:contain; border-radius:8px; }
+footer .logo-image { width:44px; height:44px; }
+.logo-mark { background:#111; }.logo-mark:before,.logo-mark:after { background:#fff; }.logo-mark span { border-color:#fff; }
+.search-box { background:#f5f5f5; color:#666; }.search-box input { color:#111; }.search-box input::placeholder { color:#888; }.search-box kbd { background:#e7e7e7; color:#555; }
+.nav-link:hover,.nav-link.selected { background:#f1f1f1; }.nav-link.active { color:#111; }
+.voice-button { background:#fff; color:#111; border-color:#cfcfcf; }.voice-button:hover { border-color:#111; }.voice-button kbd { background:#f1f1f1; color:#666; }
+.account-button { background:#111; color:#fff; }.account-avatar { background:#fff; color:#111; }
+.more-menu { background:#fff; border-color:#d8d8d8; color:#111; box-shadow:0 18px 55px rgba(0,0,0,.12); }.menu-heading,.menu-group + .menu-group { border-color:#e5e5e5; }.menu-group-title { color:#777; }.menu-tile { color:#111; }.menu-tile:hover { background:#f1f1f1; }.menu-icon.blue,.menu-icon.purple,.menu-icon.teal,.menu-icon.gold,.menu-icon.orange,.menu-icon.green { background:#111; color:#fff; }
+.hero-shell,.learn-hero { background:#fff; color:#111; border-bottom:1px solid #e5e5e5; }.hero-copy h1,.learn-hero-copy h1 { color:#111; }.hero-copy h1 span,.learn-hero-copy h1 span { color:#666; }.hero-copy p,.learn-hero-copy p { color:#555; }.eyebrow,.hero-trust { color:#666; }.eyebrow-dot { background:#111; box-shadow:none; }.hero-grid { opacity:.2; background-image:linear-gradient(#d7d7d7 1px,transparent 1px),linear-gradient(90deg,#d7d7d7 1px,transparent 1px); }.hero-glow { border-color:#111; box-shadow:0 -16px 35px rgba(0,0,0,.12); }.orb,.orb-two { background:#111; }.float-card,.learn-progress-card { background:#fff; border-color:#d9d9d9; color:#111; box-shadow:0 18px 50px rgba(0,0,0,.1); }.float-card-label,.float-card-small small,.float-card-voice { color:#666; }.mini-icon,.voice-orb { background:#111; }.sparkline i { background:#111; }.sparkline { border-color:#e5e5e5; }
+.primary-button,.listen-button { color:#fff; background:#111; box-shadow:none; }.primary-button:hover,.listen-button:hover { background:#333; }.secondary-button { color:#111; background:#fff; border-color:#cfcfcf; }.secondary-button:hover { background:#f3f3f3; }
+.welcome-label,.muted-label,.market-card-top { color:#777; }.quick-actions button { color:#111; background:#fff; border-color:#d9d9d9; }.quick-actions button:first-child { color:#111; border-color:#111; background:#f5f5f5; }
+.market-card,.mood-card,.portfolio-main,.holdings-card,.learn-track-mini,.learn-course-card,.learn-path-card { background:#fff; color:#111; border-color:#dedede; box-shadow:0 8px 24px rgba(0,0,0,.04); }.mood-card { background:#111; color:#fff; border-color:#111; }.mood-card .market-card-top,.mood-card small { color:#bbb; }.mood-gauge { background:conic-gradient(#111 0 38%,#888 38% 66%,#ccc 66% 81%,#444 81%); }.mood-gauge:after { background:#111; }
+.chart-tabs,.learn-progress-bar { background:#f1f1f1; }.chart-tabs button.active { color:#111; background:#fff; }.full-width-button { color:#111; background:#f1f1f1; }.chart-lines i { background:#e8e8e8; }.chart-tooltip { border-color:#d8d8d8; }.holding-row { border-color:#ededed; }.holding-name strong,.holding-amount strong { color:#222; }
+.cta-section { color:#fff; background:#111; }.cta-section p { color:#ccc; }.cta-section .section-kicker { color:#fff; }.cta-section .primary-button { background:#fff; color:#111; }.cta-section .primary-button:hover { background:#eee; }
+footer { color:#777; background:#fff; }footer .logo,footer .logo-flow { color:#111; }footer button { color:#666; }
+.voice-overlay,.login-overlay { background:rgba(255,255,255,.78); }.voice-panel,.login-dialog { background:#fff; color:#111; border-color:#d5d5d5; box-shadow:0 30px 90px rgba(0,0,0,.16); }.voice-panel h3,.login-dialog h2 { color:#111; }.icon-button,.login-close { color:#111; border-color:#d5d5d5; }.voice-wave span { background:#111; }.voice-suggestions button { color:#555; border-color:#d5d5d5; }.voice-suggestions button:hover { color:#111; border-color:#111; }
+.learn-progress-fill { background:#111; }.learn-progress-badge { background:#f1f1f1; color:#111; }.learn-track-mini:hover { background:#f5f5f5; border-color:#111; }

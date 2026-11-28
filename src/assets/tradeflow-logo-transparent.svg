@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 170" role="img" aria-label="TradeFlow Tf monogram">
+  <title>TradeFlow Tf monogram</title>
+  <defs>
+    <linearGradient id="charcoal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#202326"/>
+      <stop offset="1" stop-color="#3B4044"/>
+    </linearGradient>
+    <linearGradient id="emerald" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#18A875"/>
+      <stop offset="1" stop-color="#078B5B"/>
+    </linearGradient>
+  </defs>
+  <!-- Bold italic T -->
+  <path fill="url(#charcoal)" d="M34 14 Q35 8 44 8 H174 L153 35 H105 L83 151 H47 L69 35 H12 Z"/>
+  <!-- Complete lowercase f: full upper hook, crossbar and uninterrupted stem -->
+  <path fill="url(#charcoal)" d="M166 53 Q173 35 193 35 H220 L214 61 H197 Q189 61 186 72 L183 85 H211 L205 109 H178 L170 151 H136 L147 109 H127 L133 85 H152 L157 67 Q159 58 166 53 Z"/>
+  <!-- Rising market swoosh -->
+  <path d="M28 127 C66 153 117 151 162 133 C203 116 231 88 251 54" fill="none" stroke="url(#emerald)" stroke-width="6.5" stroke-linecap="round"/>
+  <!-- Three rising candlesticks -->
+  <g fill="#159B68" stroke="#159B68" stroke-linecap="round" stroke-width="3.5">
+    <path d="M224 38 V67 M224 45 H236 V60 H224 Z"/>
+    <path d="M247 24 V59 M247 31 H259 V51 H247 Z"/>
+    <path d="M270 8 V48 M270 16 H282 V39 H270 Z"/>
+  </g>
+</svg>

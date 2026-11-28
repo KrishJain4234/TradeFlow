@@ -12,6 +12,10 @@ import {
 } from 'lucide-react'
 import { getLanguageOption, getMostFrequentLanguage, loadVoiceProfile, normalizeLanguageCode } from './voice/languages'
 import './styles.css'
+import tradeflowLogo from './assets/tradeflow-logo-transparent.svg'
+
+const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+if (favicon) favicon.href = tradeflowLogo
 
 const DEMO_CREDENTIALS = { email: 'demo@tradeflow.in', password: 'TradeFlowDemo1!' }
 const DEMO_SESSION_KEY = 'tradeflow-demo-session'
@@ -47,7 +51,7 @@ const menuGroups = [
 ]
 
 function Logo({ onClick }: { onClick: () => void }) {
-  return <a href="/" className="logo logo-button" aria-label="TradeFlow home" onClick={onClick}><span className="logo-mark"><span /></span><span>Trade<span className="logo-flow">Flow</span></span></a>
+  return <a href="/" className="logo logo-button" aria-label="TradeFlow home" onClick={onClick}><img className="logo-image" src={tradeflowLogo} alt="TradeFlow" /></a>
 }
 
 function MarketTicker() {

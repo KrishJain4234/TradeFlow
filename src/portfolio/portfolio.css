@@ -171,3 +171,18 @@
   .pf-holdings-toolbar { width:100%; }
   .pf-sector-group { margin:0 16px 12px; }
 }
+
+/* Light monochrome theme */
+.pf-page { background:#fff; color:#111; }
+.pf-header { background:#fff; color:#111; border-bottom:1px solid #e5e5e5; }
+.pf-back,.pf-btn-ghost { border-color:#cfcfcf; color:#111; }.pf-back:hover,.pf-btn-ghost:hover { background:#f3f3f3; color:#111; }
+.pf-btn-primary { background:#111; color:#fff; }.pf-btn-primary:hover { background:#333; }
+.pf-summary-card,.pf-donut-card,.pf-sector-card,.pf-sector-group { background:#fff; border-color:#dedede; box-shadow:0 4px 16px rgba(0,0,0,.04); }
+.pf-summary-main,.pf-chart-card { background:#fff; color:#111; border-color:#dedede; box-shadow:0 8px 28px rgba(0,0,0,.05); }
+.pf-summary-main .pf-label { color:#777; }.pf-range-tabs { background:#f1f1f1; }.pf-range-tabs button { color:#777; }.pf-range-tabs button.active { background:#111; color:#fff; }
+.pf-chart-guides,.pf-chart-axis { color:#777; }.pf-donut-center { color:#111; }.pf-donut-center span { color:#777; }
+.pf-sector-name,.pf-sector-pct,.pf-section-heading,.pf-sector-card-value,.pf-company-name { color:#111; }.pf-sector-card-name { color:#666; }.pf-sector-card-bar { background:#ededed; }
+.pf-search-box,.pf-sort-tabs button,.pf-note-btn { border-color:#d5d5d5; background:#fff; color:#111; }.pf-search-box input { color:#111; }.pf-sort-tabs button.active { background:#111; border-color:#111; color:#fff; }.pf-note-btn:hover { border-color:#111; color:#111; }
+.pf-sector-group-header { background:#fafafa; color:#111; border-color:#e5e5e5; }.pf-sector-group-header:hover,.pf-table tr:hover td { background:#f3f3f3; }.pf-table th { background:#fafafa; color:#777; border-color:#e5e5e5; }.pf-table td { border-color:#ededed; }
+.pf-company-symbol,.pf-note-preview,.pf-disclaimer,.pf-last-updated { color:#777; }
+.pf-modal-overlay { background:rgba(255,255,255,.78); }.pf-modal { background:#fff; color:#111; border-color:#d5d5d5; box-shadow:0 30px 90px rgba(0,0,0,.16); }.pf-modal-sub { color:#777; }.pf-modal-close { color:#111; border-color:#d5d5d5; }.pf-modal-textarea { background:#fafafa; color:#111; border-color:#d5d5d5; }.pf-modal-textarea:focus { border-color:#111; }
